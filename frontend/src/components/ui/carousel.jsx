@@ -1,111 +1,86 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useLanguage } from "@/app/context/LanguageContext";
+import { translations } from "@/lib/translations";
 
-const majors = [
-  { name: "Computer Science", icon: "💻" },
-  { name: "Mathematics", icon: "➕" },
-  { name: "Physics", icon: "🧲" },
-  { name: "Biology", icon: "🧬" },
-  { name: "Chemistry", icon: "⚗️" },
-  { name: "Economics", icon: "💰" },
-  { name: "Psychology", icon: "🧠" },
-  { name: "Art", icon: "🎨" },
-  { name: "Music", icon: "🎵" },
-  { name: "Engineering", icon: "⚙️" },
-  { name: "Philosophy", icon: "🪬" },
-  { name: "History", icon: "📜" },
-  { name: "Political Science", icon: "🏛️" },
-  { name: "Sociology", icon: "👥" },
-  { name: "Anthropology", icon: "🦴" },
-  { name: "Environmental Science", icon: "🌿" },
-  { name: "Neuroscience", icon: "🔬" },
-  { name: "Architecture", icon: "🏗️" },
-  { name: "Film Studies", icon: "🎬" },
-  { name: "Linguistics", icon: "🗣️" },
-  { name: "Nursing", icon: "🩺" },
-  { name: "Business Administration", icon: "📊" },
-  { name: "Marketing", icon: "📣" },
-  { name: "Finance", icon: "💹" },
-  { name: "Accounting", icon: "🧾" },
-  { name: "Law", icon: "⚖️" },
-  { name: "Education", icon: "📚" },
-  { name: "Journalism", icon: "📰" },
-  { name: "Public Health", icon: "🏥" },
-  { name: "Astronomy", icon: "🔭" },
-  { name: "Biochemistry", icon: "🧪" },
-  { name: "Data Science", icon: "📈" },
-  { name: "Cybersecurity", icon: "🔐" },
-  { name: "Theater", icon: "🎭" },
-  { name: "Dance", icon: "🩰" },
-  { name: "Graphic Design", icon: "✏️" },
-  { name: "Mechanical Engineering", icon: "🔩" },
-  { name: "Electrical Engineering", icon: "⚡" },
-  { name: "Civil Engineering", icon: "🌉" },
-  { name: "Biomedical Engineering", icon: "🫀" },
-  { name: "International Relations", icon: "🌐" },
-  { name: "Social Work", icon: "🤝" },
-  { name: "Statistics", icon: "📉" },
-  { name: "Geology", icon: "🪨" },
-  { name: "Oceanography", icon: "🌊" },
-  { name: "Veterinary Science", icon: "🐾" },
-  { name: "Pharmacy", icon: "💊" },
-  { name: "Kinesiology", icon: "🏃" },
-  { name: "Religious Studies", icon: "🕊️" },
-  { name: "Creative Writing", icon: "✍️" },
-];
-
-function ElevatorColumn({ initialDirection = 1, speed = 0.8 }) {
+function HorizontalCarousel({ majors, direction = 1, speed = 0.5 }) {
   const containerRef = useRef(null);
+  const isHoveredRef = useRef(false);
+  const scrollRef = useRef(0);
+  const velocityRef = useRef(0);
 
-  const repeated = [...majors, ...majors, ...majors];
+  const repeated = [...majors, ...majors];
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const itemHeight = 128; 
-    const singleSetHeight = majors.length * itemHeight;
+    scrollRef.current = container.scrollWidth / 2;
+    container.scrollLeft = scrollRef.current;
 
-    container.scrollTop = singleSetHeight;
-
-    let scrollTop = singleSetHeight;
-    let direction = initialDirection;
-    let animationFrame;
+    let rafId;
 
     function step() {
-      scrollTop += speed * direction;
+      if (!isHoveredRef.current) {
+        velocityRef.current += (speed * direction - velocityRef.current) * 0.05;
+        scrollRef.current += velocityRef.current;
 
-      if (scrollTop >= singleSetHeight * 2) {
-        scrollTop -= singleSetHeight;
+        const half = container.scrollWidth / 2;
+        if (scrollRef.current >= half) scrollRef.current -= half;
+        if (scrollRef.current < 0) scrollRef.current += half;
+
+        container.scrollLeft = scrollRef.current;
+      } else {
+        velocityRef.current *= 0.9;
+        if (Math.abs(velocityRef.current) > 0.01) {
+          scrollRef.current += velocityRef.current;
+
+          const half = container.scrollWidth / 2;
+          if (scrollRef.current >= half) scrollRef.current -= half;
+          if (scrollRef.current < 0) scrollRef.current += half;
+
+          container.scrollLeft = scrollRef.current;
+        }
       }
 
-      if (scrollTop <= 0) {
-        scrollTop += singleSetHeight;
-      }
-
-      container.scrollTop = scrollTop;
-      animationFrame = requestAnimationFrame(step);
+      rafId = requestAnimationFrame(step);
     }
 
-    animationFrame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [initialDirection, speed]);
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [direction, speed]);
 
   return (
-    <div className="w-70 h-[750px] overflow-hidden border-2 border-black rounded-xl">
+    <div
+      className="relative w-full"
+      style={{ overflow: "hidden" }}
+      onMouseEnter={() => { isHoveredRef.current = true; }}
+      onMouseLeave={() => { isHoveredRef.current = false; }}
+    >
+      <div className="absolute top-0 left-0 h-full w-24 z-10 pointer-events-none bg-gradient-to-r from-gray-50 to-transparent" />
+      <div className="absolute top-0 right-0 h-full w-24 z-10 pointer-events-none bg-gradient-to-l from-gray-50 to-transparent" />
+
       <div
         ref={containerRef}
-        className="flex flex-col overflow-y-scroll h-full"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className="flex gap-4 px-24"
+        style={{
+          overflowX: "hidden",
+          overflowY: "visible",
+          height: "180px",
+          alignItems: "center",
+        }}
       >
         {repeated.map((major, idx) => (
           <div
             key={idx}
-            className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white h-32 px-5 font-patua text-xl border-b border-gray-200 flex-shrink-0"
+            className="flex-shrink-0 bg-white rounded-2xl flex flex-col items-center justify-center text-center shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-default"
+            style={{ width: "148px", height: "148px" }}
           >
-            <span className="text-3xl">{major.icon}</span>
-            <span>{major.name}</span>
+            <span className="text-4xl mb-2">{major.icon}</span>
+            <span className="text-sm font-medium text-gray-700 px-2 leading-tight">
+              {major.name}
+            </span>
           </div>
         ))}
       </div>
@@ -114,10 +89,17 @@ function ElevatorColumn({ initialDirection = 1, speed = 0.8 }) {
 }
 
 export default function Carousel() {
+  const { language } = useLanguage();
+  const t = translations[language];
+
+  const half = Math.ceil(t.majors.length / 2);
+  const row1 = t.majors.slice(0, half);
+  const row2 = t.majors.slice(half);
+
   return (
-    <div className="flex justify-center gap-6 mt-10">
-      <ElevatorColumn initialDirection={1} speed={0.8} />
-      <ElevatorColumn initialDirection={-1} speed={0.8} />
+    <div className="flex flex-col gap-6 mt-10 py-4">
+      <HorizontalCarousel majors={row1} direction={1} speed={0.4} />
+      <HorizontalCarousel majors={row2} direction={-1} speed={0.4} />
     </div>
   );
 }

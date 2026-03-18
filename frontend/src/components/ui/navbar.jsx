@@ -3,50 +3,53 @@ import Image from "next/image";
 import { useState } from "react";
 import LoginModal from "./loginmodal";
 import Jerry_Logo from "../../images/Logo.png";
+import { useLanguage } from "@/app/context/LanguageContext";
+import { translations } from "@/lib/translations";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const links = ["Dashboard", "Features", "Pricing", "FAQ"];
+  const { language } = useLanguage();
+  const t = translations[language];
+
+  const navHrefs = ["/", "#features", "#pricing", "#faq"];
 
   return (
     <>
       <nav className="w-full max-w-5xl mx-auto px-4">
-        <div className="grid grid-cols-3 items-center bg-white border border-gray-200 px-5 py-2.5 rounded-full shadow-sm">
-          
-          <div className="flex justify-start">
-            <Image
-              src={Jerry_Logo}
-              alt="Testly Logo"
-              height={36}
-              className="h-9 w-auto cursor-pointer"
-            />
-          </div>
+        <div className="flex items-center justify-between bg-white border border-gray-200 px-5 py-2.5 rounded-full shadow-sm">
 
-          <ul className="hidden md:flex justify-center items-center gap-2">
-            {links.map((link) => (
-              <li key={link}>
+          <Image
+            src={Jerry_Logo}
+            alt="Testly Logo"
+            height={36}
+            className="h-9 w-auto cursor-pointer"
+          />
+
+          <ul className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+            {t.navLinks.map((label, i) => (
+              <li key={label}>
                 <a
-                  href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
-                  className="font-patua text-sm text-gray-600 px-4 py-2 rounded-full hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
+                  href={navHrefs[i]}
+                  className="font-patua text-sm text-gray-600 px-4 py-2 rounded-full transition-colors hover:text-emerald-500 hover:shadow-[0_0_8px_#10B981] cursor-pointer"
                 >
-                  {link}
+                  {label}
                 </a>
               </li>
             ))}
           </ul>
 
-          <div className="flex justify-end items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setOpen(true)}
               className="hidden md:block font-patua text-sm text-gray-600 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors"
             >
-              Log in
+              {t.logIn}
             </button>
 
             <button
-              className="md:hidden ml-1 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >
@@ -65,14 +68,14 @@ const Navbar = () => {
 
         {menuOpen && (
           <div className="md:hidden mt-2 bg-white border border-gray-200 rounded-2xl shadow-md px-4 py-3 flex flex-col gap-1">
-            {links.map((link) => (
+            {t.navLinks.map((label, i) => (
               <a
-                key={link}
-                href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
-                className="font-patua text-sm text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+                key={label}
+                href={navHrefs[i]}
+                className="font-patua text-sm text-gray-700 px-4 py-2.5 rounded-xl transition-colors hover:text-emerald-500 hover:shadow-[0_0_8px_#10B981]"
                 onClick={() => setMenuOpen(false)}
               >
-                {link}
+                {label}
               </a>
             ))}
             <div className="border-t border-gray-100 mt-1 pt-2">
@@ -80,7 +83,7 @@ const Navbar = () => {
                 onClick={() => { setOpen(true); setMenuOpen(false); }}
                 className="font-patua w-full text-sm text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left"
               >
-                Log in
+                {t.logIn}
               </button>
             </div>
           </div>
