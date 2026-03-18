@@ -34,10 +34,9 @@ function Footer() {
           </h2>
           <ul className="space-y-3 text-gray-500 text-sm">
             {t.navLinks.map((label, i) => {
-              const hrefs = ["/", "/#features", "/#pricing", "/#faq"];
-              return (
+                const navHrefs = ["/dashboard", "/#features", "/#pricing", "/#faq"];              return (
                 <li key={label}>
-                  <Link href={hrefs[i]} className="group relative hover:text-emerald-500 font-patua">
+                  <Link href={navHrefs[i]} className="group relative hover:text-emerald-500 font-patua">
                     {label}
                     <span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-emerald-500 transition-all duration-300 group-hover:w-full" />
                   </Link>

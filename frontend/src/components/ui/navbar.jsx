@@ -5,6 +5,7 @@ import LoginModal from "./loginmodal";
 import Jerry_Logo from "../../images/Logo.png";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { translations } from "@/lib/translations";
+import Link from "next/link";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
@@ -13,29 +14,30 @@ const Navbar = () => {
   const { language } = useLanguage();
   const t = translations[language];
 
-  const navHrefs = ["/", "#features", "#pricing", "#faq"];
-
+  const navHrefs = ["/dashboard", "/#features", "/#pricing", "/#faq"];
   return (
     <>
       <nav className="w-full max-w-5xl mx-auto px-4">
         <div className="flex items-center justify-between bg-white border border-gray-200 px-5 py-2.5 rounded-full shadow-sm">
 
+         <Link href="/">
           <Image
-            src={Jerry_Logo}
-            alt="Testly Logo"
-            height={36}
-            className="h-9 w-auto cursor-pointer"
+            src = {Jerry_Logo}
+            alt = "Testly Logo"
+            height = {36}
+            className = "h-9 w-auto cursor-pointer"
           />
+        </Link>
 
           <ul className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
             {t.navLinks.map((label, i) => (
               <li key={label}>
-                <a
+                <Link
                   href={navHrefs[i]}
                   className="font-patua text-sm text-gray-600 px-4 py-2 rounded-full transition-colors hover:text-emerald-500 hover:shadow-[0_0_8px_#10B981] cursor-pointer"
                 >
-                  {label}
-                </a>
+                {label}
+              </Link>
               </li>
             ))}
           </ul>
@@ -69,14 +71,13 @@ const Navbar = () => {
         {menuOpen && (
           <div className="md:hidden mt-2 bg-white border border-gray-200 rounded-2xl shadow-md px-4 py-3 flex flex-col gap-1">
             {t.navLinks.map((label, i) => (
-              <a
-                key={label}
+              <Link
                 href={navHrefs[i]}
                 className="font-patua text-sm text-gray-700 px-4 py-2.5 rounded-xl transition-colors hover:text-emerald-500 hover:shadow-[0_0_8px_#10B981]"
                 onClick={() => setMenuOpen(false)}
               >
                 {label}
-              </a>
+              </Link>
             ))}
             <div className="border-t border-gray-100 mt-1 pt-2">
               <button
