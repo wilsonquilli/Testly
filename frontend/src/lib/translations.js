@@ -131,7 +131,7 @@ export const translations = {
     pricingSubtitle: "Start for free, upgrade when you're ready.",
     free: "Free",
     freePrice: "$0",
-    freeFeatures: ["10 Quizzes / month", "20 Flashcards / month", "10 File Uploads / month"],
+    freeFeatures: ["3 Quizzes / month", "20 Flashcards / month", "10 File Uploads / month"],
     freeBtn: "Get Started Free",
     popular: "POPULAR",
     jerryPlan: "Jerry Plan",
