@@ -167,10 +167,20 @@ export const translations = {
     footerLanguages: "Languages",
     footerFollow: "Follow",
     footerCopyright: `© ${new Date().getFullYear()} Testly — All rights reserved.`,
+
+    dashboardHeader:  "Turn your notes into a quiz",
+    dashboardSubHeader: "Paste text or upload a PDF - we'll handle the rest",
+    dashboardButton1: "Paste notes",
+    dashboardButton2: "Upload file",
+    dashboardTextField: "Paste your notes, lecture slides, or any study material here...",
+    dashboardAttachPDF: "Attach PDF",
+    dashboardGenerateQuiz: "Generate quiz",
+    dashboardDragandDrop: "Drag & drop your file",
+    dashboardsubDandD: "PDF or TXT · up to 10 MB · browse",
   },
 
   es: {
-    navLinks: ["Inicio", "Funciones", "Precios", "FAQ"],
+    navLinks: ["Panel", "Funciones", "Precios", "FAQ"],
     logIn: "Iniciar sesión",
 
     heroBadge: "El asistente de estudio con IA GRATIS para cada estudiante",
@@ -337,5 +347,16 @@ export const translations = {
     footerLanguages: "Idiomas",
     footerFollow: "Seguir",
     footerCopyright: `© ${new Date().getFullYear()} Testly — Todos los derechos reservados.`,
+
+    dashboardHeader:  "Convierte tus notas en un cuestionario",
+    dashboardSubHeader: "Pega el texto o sube un PDF; nosotros nos encargamos del resto",
+    dashboardButton1: "Pegar notas",
+    dashboardButton2: "Subir archivo",
+    dashboardTextField: "Pega aquí tus notas, diapositivas de clase o cualquier material de estudio...",
+    dashboardAttachPDF: "Adjuntar PDF",
+    dashboardGenerateQuiz: "Generar cuestionario",
+    dashboardDragandDrop: "Arrastra y suelta tu archivo",
+    dashboardsubDandD: "PDF o TXT · hasta 10 MB · Examinar",
+
   },
 };

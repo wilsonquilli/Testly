@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import QuizQuestion from "@/components/ui/quizquestion";
 import Results from "@/components/ui/results";
 import QuizSkeleton from "@/components/ui/QuizSkeleton";
@@ -8,20 +8,22 @@ import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import DarkModeToggle from "@/components/ui/DarkModeToggle";
+import { useLanguage } from "../context/LanguageContext";
+import { translations } from "@/lib/translations";
 
 const HISTORY_KEY = "testly_recent_uploads";
 const MAX_HISTORY = 5;
 
-function TimerModal({ onConfirm, onSkip, dark }) {
+function TimerModal({ onConfirm, onSkip, dark, copy }) {
   const [seconds, setSeconds] = useState(30);
   const accent = dark ? "#ef4444" : "#059669";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
       <div className={`w-full max-w-sm rounded-3xl p-7 shadow-2xl border ${dark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-100"}`}>
-        <h3 className={`font-patua text-xl font-bold mb-1 ${dark ? "text-gray-50" : "text-gray-900"}`}>Set a timer?</h3>
+        <h3 className={`font-patua text-xl font-bold mb-1 ${dark ? "text-gray-50" : "text-gray-900"}`}>{copy.timerTitle}</h3>
         <p className={`font-patua text-sm mb-6 ${dark ? "text-gray-400" : "text-gray-500"}`}>
-          Choose how many seconds per question, or skip for no timer.
+          {copy.timerDescription}
         </p>
 
         <div className="flex items-center gap-4 mb-6">
@@ -31,7 +33,7 @@ function TimerModal({ onConfirm, onSkip, dark }) {
           >−</button>
           <div className="flex-1 text-center">
             <span className="font-patua text-4xl font-bold" style={{ color: accent }}>{seconds}</span>
-            <span className={`font-patua text-sm ml-1 ${dark ? "text-gray-400" : "text-gray-500"}`}>sec</span>
+            <span className={`font-patua text-sm ml-1 ${dark ? "text-gray-400" : "text-gray-500"}`}>{copy.secondsLabel}</span>
           </div>
           <button
             onClick={() => setSeconds(Math.min(300, seconds + 5))}
@@ -61,18 +63,34 @@ function TimerModal({ onConfirm, onSkip, dark }) {
             onClick={onSkip}
             className={`flex-1 py-2.5 rounded-full text-sm font-semibold border transition-colors ${dark ? "border-gray-600 text-gray-300 hover:bg-gray-800" : "border-gray-200 text-gray-700 hover:bg-gray-50"}`}
           >
-            No timer
+            {copy.noTimer}
           </button>
           <button
             onClick={() => onConfirm(seconds)}
             className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ background: accent }}
           >
-            Start quiz
+            {copy.startQuiz}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function renderDashboardTitle(language, accent) {
+  if (language === "es") {
+    return (
+      <>
+        Convierte tus notas en un <span style={{ color: accent }}>cuestionario</span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      Turn your notes into a <span style={{ color: accent }}>quiz</span>
+    </>
   );
 }
 
@@ -91,15 +109,41 @@ export default function Dashboard() {
   const [inputMode, setInputMode] = useState("text");
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(null);
-  const [history, setHistory] = useState([]);
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
+  const [history, setHistory] = useState(() => {
+    if (typeof window === "undefined") return [];
     try {
-      const saved = localStorage.getItem(HISTORY_KEY);
-      if (saved) setHistory(JSON.parse(saved));
-    } catch {}
-  }, []);
+      const saved = window.localStorage.getItem(HISTORY_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const { language } = useLanguage();
+  const t = translations[language] ?? translations.en;
+  const dashboardCopy = language === "es"
+    ? {
+        timerTitle: "¿Configurar un temporizador?",
+        timerDescription: "Elige cuántos segundos por pregunta, o sáltalo para no usar temporizador.",
+        secondsLabel: "seg",
+        noTimer: "Sin temporizador",
+        startQuiz: "Comenzar cuestionario",
+        dropHere: "Suéltalo aquí",
+        browse: "Examinar",
+        recentUploads: "Cargas recientes",
+        remove: "Eliminar",
+      }
+    : {
+        timerTitle: "Set a timer?",
+        timerDescription: "Choose how many seconds per question, or skip for no timer.",
+        secondsLabel: "sec",
+        noTimer: "No timer",
+        startQuiz: "Start quiz",
+        dropHere: "Drop it here",
+        browse: "browse",
+        recentUploads: "Recent uploads",
+        remove: "Remove",
+      };
+  const fileInputRef = useRef(null);
 
   const saveToHistory = (text, name) => {
     const entry = {
@@ -214,6 +258,7 @@ export default function Dashboard() {
       {showTimerModal && (
         <TimerModal
           dark={dark}
+          copy={dashboardCopy}
           onConfirm={startGeneration}
           onSkip={() => startGeneration(null)}
         />
@@ -222,11 +267,10 @@ export default function Dashboard() {
       <main className="font-patua">
         <div className="flex flex-col items-center text-center px-6 pt-16 pb-10">
           <h1 className={`text-4xl md:text-5xl font-bold tracking-tight mb-3 ${dark ? "text-gray-50" : "text-gray-900"}`}>
-            Turn your notes into a{" "}
-            <span style={{ color: accent }}>quiz</span>
+            {renderDashboardTitle(language, accent)}
           </h1>
           <p className={`text-base ${dark ? "text-gray-400" : "text-gray-500"}`}>
-            Paste text or upload a PDF — we'll handle the rest
+            {t.dashboardSubHeader}
           </p>
         </div>
 
@@ -244,7 +288,7 @@ export default function Dashboard() {
                       : dark ? "text-gray-400 hover:text-gray-200" : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
-                  {mode === "text" ? "Paste notes" : "Upload file"}
+                  {mode === "text" ? t.dashboardButton1 : t.dashboardButton2}
                 </button>
               ))}
             </div>
@@ -262,7 +306,7 @@ export default function Dashboard() {
                   className={`w-full min-h-52 px-5 py-5 bg-transparent border-none outline-none resize-none text-sm leading-relaxed ${
                     dark ? "text-gray-200 placeholder-gray-600" : "text-gray-800 placeholder-gray-400"
                   }`}
-                  placeholder="Paste your notes, lecture slides, or any study material here…"
+                  placeholder={t.dashboardTextField}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
@@ -276,7 +320,7 @@ export default function Dashboard() {
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
                     </svg>
-                    Attach PDF
+                    {t.dashboardAttachPDF}
                   </button>
                   <button
                     className="flex items-center gap-2 px-5 py-2 rounded-full text-white text-sm font-medium transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
@@ -287,7 +331,7 @@ export default function Dashboard() {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                     </svg>
-                    Generate quiz
+                    {t.dashboardGenerateQuiz}
                   </button>
                 </div>
               </>
@@ -311,13 +355,13 @@ export default function Dashboard() {
                     </svg>
                   </div>
                   <p className={`text-sm font-medium ${dark ? "text-gray-200" : "text-gray-700"}`}>
-                    {isDragging ? "Drop it here" : "Drag & drop your file"}
+                    {isDragging ? dashboardCopy.dropHere : t.dashboardDragandDrop}
                   </p>
                   <p className={`text-xs text-center ${dark ? "text-gray-500" : "text-gray-400"}`}>
-                    PDF or TXT · up to 10 MB ·{" "}
+                    {t.dashboardsubDandD.replace(/\s*Examinar$|\s*browse$/i, "")}{" "}
                     <span className="underline underline-offset-2 cursor-pointer" style={{ color: accent }}
                       onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
-                      browse
+                      {dashboardCopy.browse}
                     </span>
                   </p>
                 </div>
@@ -346,7 +390,7 @@ export default function Dashboard() {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                     </svg>
-                    Generate quiz
+                    {t.dashboardGenerateQuiz}
                   </button>
                 </div>
               </>
@@ -357,7 +401,7 @@ export default function Dashboard() {
           {history.length > 0 && (
             <div className="mt-8">
               <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${dark ? "text-gray-500" : "text-gray-400"}`}>
-                Recent uploads
+                {dashboardCopy.recentUploads}
               </p>
               <div className="space-y-2">
                 {history.map((entry) => (
@@ -386,7 +430,7 @@ export default function Dashboard() {
                     <button
                       className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg ${dark ? "hover:bg-gray-700 text-gray-500" : "hover:bg-gray-200 text-gray-400"}`}
                       onClick={(e) => { e.stopPropagation(); removeFromHistory(entry.id); }}
-                      aria-label="Remove"
+                      aria-label={dashboardCopy.remove}
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
