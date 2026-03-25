@@ -6,6 +6,7 @@ from typing import Optional
 from ..db import get_db
 from ..auth import get_current_user
 from .. import models
+from ..realtime import broadcast_dashboard_snapshot, broadcast_generation_progress
 from ..services.ai_service import generate_flashcards
 from ..services.parser import extract_text_from_pdf
 from ..services.usage_limiter import get_or_create_usage, check_limit
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 async def generate_flashcards_endpoint(
     file: Optional[UploadFile] = File(None),
     text: Optional[str] = Form(None),
+    session_id: Optional[str] = Form(None),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -32,10 +34,16 @@ async def generate_flashcards_endpoint(
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
+
+        if session_id:
+            await broadcast_generation_progress(session_id, "reading", "Reading your document...", 15)
+
         source_text = extract_text_from_pdf(tmp_path)
         os.unlink(tmp_path)
         usage.files_uploaded += 1
     elif text:
+        if session_id:
+            await broadcast_generation_progress(session_id, "reading", "Reading your notes...", 15)
         source_text = text
     else:
         raise HTTPException(status_code=422, detail="Provide either a PDF file or raw text.")
@@ -43,7 +51,13 @@ async def generate_flashcards_endpoint(
     if not source_text:
         raise HTTPException(status_code=422, detail="No text could be extracted.")
 
+    if session_id:
+        await broadcast_generation_progress(session_id, "analyzing", "Analyzing key concepts...", 45)
+
     flashcard_content = generate_flashcards(source_text, is_premium=current_user.is_premium)
+
+    if session_id:
+        await broadcast_generation_progress(session_id, "generating", "Saving your flashcards...", 80)
 
     flashcard = models.Flashcard(
         user_id=current_user.id,
@@ -54,6 +68,11 @@ async def generate_flashcards_endpoint(
     usage.flashcards_generated += 1
     db.commit()
     db.refresh(flashcard)
+
+    await broadcast_dashboard_snapshot(db, current_user.id)
+
+    if session_id:
+        await broadcast_generation_progress(session_id, "done", "Your flashcards are ready!", 100)
 
     return flashcard
 

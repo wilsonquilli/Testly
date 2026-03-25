@@ -1,21 +1,81 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LoginModal from "./loginmodal";
 import Jerry_Logo from "../../images/Logo.png";
 import { useLanguage } from "@/app/context/LanguageContext";
 import { translations } from "@/lib/translations";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import Link from "next/link";
+import {
+  apiRequest,
+  clearAuthSession,
+  getStoredUser,
+  setAuthSession,
+} from "@/utils/api";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const { language } = useLanguage();
   const { dark } = useDarkMode();
   const t = translations[language];
   const navHrefs = ["/dashboard", "/#features", "/#pricing", "/#faq"];
   const accentColor = dark ? "#ef4444" : "#10B981";
+
+  useEffect(() => {
+    setCurrentUser(getStoredUser());
+
+    const url = new URL(window.location.href);
+    const accessToken = url.searchParams.get("access_token");
+    const authError = url.searchParams.get("auth_error");
+
+    if (authError) {
+      window.alert(`Google login failed: ${authError}`);
+      url.searchParams.delete("auth_error");
+      window.history.replaceState({}, "", url.toString());
+      return;
+    }
+
+    if (!accessToken) return;
+
+    const completeGoogleLogin = async () => {
+      try {
+        const user = await apiRequest("/users/me", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        setAuthSession(accessToken, user);
+        setCurrentUser(user);
+      } catch (error) {
+        clearAuthSession();
+        window.alert(error.message || "Unable to finish Google login");
+      } finally {
+        url.searchParams.delete("access_token");
+        window.history.replaceState({}, "", url.toString());
+      }
+    };
+
+    completeGoogleLogin();
+  }, []);
+
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+  };
+
+  const handleAuthButton = () => {
+    if (currentUser) {
+      clearAuthSession();
+      setCurrentUser(null);
+      return;
+    }
+
+    setOpen(true);
+  };
+
+  const authLabel = currentUser ? currentUser.email : t.logIn;
 
   return (
     <>
@@ -45,12 +105,12 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setOpen(true)}
+              onClick={handleAuthButton}
               className={`hidden md:block font-patua text-sm px-4 py-2 rounded-full transition-colors ${
                 dark ? "text-gray-400 hover:bg-gray-800" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              {t.logIn}
+              {authLabel}
             </button>
 
             <button
@@ -87,19 +147,19 @@ const Navbar = () => {
             ))}
             <div className={`border-t mt-1 pt-2 ${dark ? "border-gray-700" : "border-gray-100"}`}>
               <button
-                onClick={() => { setOpen(true); setMenuOpen(false); }}
+                onClick={() => { handleAuthButton(); setMenuOpen(false); }}
                 className={`font-patua w-full text-sm px-4 py-2.5 rounded-xl transition-colors text-left ${
                   dark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                {t.logIn}
+                {authLabel}
               </button>
             </div>
           </div>
         )}
       </nav>
 
-      <LoginModal open={open} setOpen={setOpen} />
+      <LoginModal open={open} setOpen={setOpen} onAuthSuccess={handleAuthSuccess} />
     </>
   );
 };

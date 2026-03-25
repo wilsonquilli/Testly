@@ -71,7 +71,6 @@ export default function Home() {
   const { dark } = useDarkMode();
   const t = translations[language];
   const typingSequence = t.heroTyping.flatMap((text) => [text, 1500]);
-
   const accent = dark ? "#ef4444" : "#34D399";
 
   return (
@@ -293,7 +292,6 @@ export default function Home() {
           </Reveal>
         </div>
       </section>
-
       <Footer />
       <LoginModal open={open} setOpen={setOpen} />
       <DarkModeToggle />

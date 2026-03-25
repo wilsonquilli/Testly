@@ -10,7 +10,8 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     picture = Column(String, nullable=True)
-    oauth_provider = Column(String, nullable=False)  
+    oauth_provider = Column(String, nullable=False)
+    password_hash = Column(String, nullable=True)
 
     is_premium = Column(Boolean, default=False)
     premium_expires = Column(DateTime, nullable=True)

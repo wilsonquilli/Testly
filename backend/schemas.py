@@ -59,3 +59,12 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str
+    name: Optional[str] = None
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str

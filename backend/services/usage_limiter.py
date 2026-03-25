@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-from . import models
+from .. import models
 
 FREE_LIMITS = {
     "quiz": 10,
@@ -13,7 +13,6 @@ PREMIUM_LIMITS = {
     "flashcard": 999999,
     "upload": 999999,
 }
-
 
 def get_or_create_usage(db: Session, user_id: int) -> models.Usage:
     """Return the current month's usage row, creating it if needed."""
