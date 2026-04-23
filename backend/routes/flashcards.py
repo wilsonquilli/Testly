@@ -7,8 +7,8 @@ from ..db import get_db
 from ..auth import get_current_user
 from .. import models
 from ..realtime import broadcast_dashboard_snapshot, broadcast_generation_progress
-from ..services.ai_service import generate_flashcards
-from ..services.parser import extract_text_from_pdf
+from ..services.ai_service import AIServiceError, AIServiceUnavailableError, generate_flashcards
+from ..services.parser import extract_text_from_file
 from ..services.usage_limiter import get_or_create_usage, check_limit
 from ..schemas import FlashcardOut
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
@@ -30,7 +30,9 @@ async def generate_flashcards_endpoint(
         )
 
     if file:
-        suffix = ".pdf" if file.content_type == "application/pdf" else ""
+        original_name = file.filename or "upload"
+        _, extension = os.path.splitext(original_name)
+        suffix = extension.lower()
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
@@ -38,7 +40,11 @@ async def generate_flashcards_endpoint(
         if session_id:
             await broadcast_generation_progress(session_id, "reading", "Reading your document...", 15)
 
-        source_text = extract_text_from_pdf(tmp_path)
+        try:
+            source_text = extract_text_from_file(tmp_path, filename=original_name, content_type=file.content_type)
+        except ValueError as exc:
+            os.unlink(tmp_path)
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         os.unlink(tmp_path)
         usage.files_uploaded += 1
     elif text:
@@ -46,7 +52,7 @@ async def generate_flashcards_endpoint(
             await broadcast_generation_progress(session_id, "reading", "Reading your notes...", 15)
         source_text = text
     else:
-        raise HTTPException(status_code=422, detail="Provide either a PDF file or raw text.")
+        raise HTTPException(status_code=422, detail="Provide either a PDF/DOCX file or raw text.")
 
     if not source_text:
         raise HTTPException(status_code=422, detail="No text could be extracted.")
@@ -54,7 +60,16 @@ async def generate_flashcards_endpoint(
     if session_id:
         await broadcast_generation_progress(session_id, "analyzing", "Analyzing key concepts...", 45)
 
-    flashcard_content = generate_flashcards(source_text, is_premium=current_user.is_premium)
+    try:
+        flashcard_content = generate_flashcards(source_text, is_premium=current_user.is_premium)
+    except AIServiceUnavailableError as exc:
+        if session_id:
+            await broadcast_generation_progress(session_id, "error", str(exc), 100)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except AIServiceError as exc:
+        if session_id:
+            await broadcast_generation_progress(session_id, "error", str(exc), 100)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     if session_id:
         await broadcast_generation_progress(session_id, "generating", "Saving your flashcards...", 80)

@@ -2,6 +2,7 @@ export const translations = {
   en: {
     navLinks: ["Dashboard", "Features", "Pricing", "FAQ"],
     logIn: "Log in",
+    logOut: "Log out",
 
     heroBadge: "The FREE AI study assistant for every student",
     heroTitle1: "Testly — Your",
@@ -193,6 +194,7 @@ export const translations = {
   es: {
     navLinks: ["Panel", "Funciones", "Precios", "FAQ"],
     logIn: "Iniciar sesión",
+    logOut: "Cerrar sesión",
 
     heroBadge: "El asistente de estudio con IA GRATIS para cada estudiante",
     heroTitle1: "Testly — Tu",

@@ -1,21 +1,31 @@
 import os
+import logging
 from json import JSONDecodeError
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
-from .db import engine, ensure_database_schema
+from sqlalchemy.exc import SQLAlchemyError
+from . import db
 from . import models
 from .routes import auth, quizzes, flashcards, subscription, invite, users
 from .realtime import build_dashboard_snapshot
 from .websocket_manager import manager
 import json
 
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    models.Base.metadata.create_all(bind=engine)
-    ensure_database_schema()
+    try:
+        models.Base.metadata.create_all(bind=db.engine)
+        db.ensure_database_schema()
+        db.set_database_status(True)
+    except SQLAlchemyError as exc:
+        message = f"Database startup skipped because the database is unreachable: {exc}"
+        db.set_database_status(False, message)
+        logger.warning(message)
     yield
 
 app = FastAPI(title="Testly API", version="1.0.0", lifespan=lifespan)
@@ -41,7 +51,11 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    db_status = db.get_database_status()
+    return {
+        "status": "healthy" if db_status["ready"] else "degraded",
+        "database": db_status,
+    }
 
 @app.websocket("/ws/generation/{session_id}")
 async def generation_ws(ws: WebSocket, session_id: str):
@@ -89,6 +103,15 @@ async def dashboard_ws(ws: WebSocket, user_id: str):
     await manager.connect(ws, f"dash:{user_id}")
     try:
         from .db import SessionLocal
+        db_status = db.get_database_status()
+
+        if not db_status["ready"]:
+            await ws.send_json({
+                "type": "error",
+                "message": db_status["message"] or "Database is unavailable",
+            })
+            await ws.close(code=1011, reason="Database unavailable")
+            return
 
         db = SessionLocal()
         try:

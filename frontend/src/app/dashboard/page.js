@@ -1,18 +1,60 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import QuizQuestion from "@/components/ui/quizquestion";
 import Results from "@/components/ui/results";
 import QuizSkeleton from "@/components/ui/QuizSkeleton";
+import GenerationProgress from "@/components/ui/GenerationProgress";
 import Navbar from "@/components/ui/navbar";
 import Footer from "@/components/ui/footer";
 import { useDarkMode } from "@/app/context/DarkModeContext";
 import DarkModeToggle from "@/components/ui/DarkModeToggle";
 import { useLanguage } from "../context/LanguageContext";
 import { translations } from "@/lib/translations";
+import { apiRequest, getAuthHeaders } from "@/utils/api";
 
 const HISTORY_KEY = "testly_recent_uploads";
 const MAX_HISTORY = 5;
+
+function getAnswerIndex(answer, options) {
+  if (typeof answer === "number") return answer;
+
+  const normalizedAnswer = String(answer || "").trim();
+  const answerLetter = normalizedAnswer.charAt(0).toUpperCase();
+  const letterIndex = ["A", "B", "C", "D"].indexOf(answerLetter);
+
+  if (letterIndex >= 0) return letterIndex;
+
+  const optionIndex = options.findIndex((option) => option === normalizedAnswer);
+  return optionIndex >= 0 ? optionIndex : 0;
+}
+
+function normalizeOption(option) {
+  return String(option || "").replace(/^[A-D][).:\s-]+/i, "").trim();
+}
+
+function parseQuizContent(content) {
+  const sanitized = String(content)
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+
+  const parsed = JSON.parse(sanitized);
+  if (!Array.isArray(parsed)) {
+    throw new Error("Unexpected quiz format returned by the server");
+  }
+
+  return parsed.map((item) => {
+    const options = Array.isArray(item.options) ? item.options.map(normalizeOption) : [];
+
+    return {
+      text: item.question || item.text || "Untitled question",
+      options,
+      answer: getAnswerIndex(item.answer, options),
+    };
+  });
+}
 
 function TimerModal({ onConfirm, onSkip, dark, copy }) {
   const [seconds, setSeconds] = useState(30);
@@ -103,21 +145,16 @@ export default function Dashboard() {
   const [score, setScore] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [notes, setNotes] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationSessionId, setGenerationSessionId] = useState(null);
+  const [requestError, setRequestError] = useState("");
   const [inputMode, setInputMode] = useState("text");
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(null);
-  const [history, setHistory] = useState(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = window.localStorage.getItem(HISTORY_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [history, setHistory] = useState([]);
   const { language } = useLanguage();
   const t = translations[language] ?? translations.en;
   const dashboardCopy = language === "es"
@@ -145,6 +182,15 @@ export default function Dashboard() {
       };
   const fileInputRef = useRef(null);
 
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(HISTORY_KEY);
+      setHistory(saved ? JSON.parse(saved) : []);
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+
   const saveToHistory = (text, name) => {
     const entry = {
       id: Date.now(),
@@ -163,6 +209,7 @@ export default function Dashboard() {
   const loadFromHistory = (entry) => {
     setNotes(entry.content || "");
     setFileName(entry.fileName || null);
+    setSelectedFile(null);
     setInputMode(entry.fileName ? "file" : "text");
   };
 
@@ -175,6 +222,7 @@ export default function Dashboard() {
   };
 
   const handleGenerateClick = () => {
+    setRequestError("");
     if (!notes.trim() && !fileName) return;
     setShowTimerModal(true);
   };
@@ -183,26 +231,53 @@ export default function Dashboard() {
     setShowTimerModal(false);
     setTimerSeconds(seconds);
     setIsGenerating(true);
+    setRequestError("");
+
+    const sessionId = crypto.randomUUID();
+    setGenerationSessionId(sessionId);
 
     if (notes.trim()) saveToHistory(notes, null);
     else if (fileName) saveToHistory("", fileName);
 
-    await new Promise((r) => setTimeout(r, 1800));
+    try {
+      const headers = getAuthHeaders();
+      if (!headers.Authorization) {
+        throw new Error("Please log in before generating a quiz");
+      }
 
-    const sampleQuiz = [
-      { text: "What is photosynthesis?", options: ["Plant energy process", "Animal digestion", "Protein synthesis", "Cell division"], answer: 0 },
-      { text: "What gas do plants absorb?", options: ["Oxygen", "Nitrogen", "Carbon dioxide", "Hydrogen"], answer: 2 },
-      { text: "What is the powerhouse of the cell?", options: ["Nucleus", "Ribosome", "Mitochondria", "Golgi apparatus"], answer: 2 },
-    ];
-    setQuiz(sampleQuiz);
-    setIsGenerating(false);
+      const formData = new FormData();
+      formData.append("session_id", sessionId);
+
+      if (inputMode === "text") {
+        formData.append("text", notes);
+      } else if (selectedFile) {
+        formData.append("file", selectedFile);
+      } else {
+        throw new Error("Please re-upload your file before generating");
+      }
+
+      const response = await apiRequest("/quiz/generate", {
+        method: "POST",
+        body: formData,
+        headers,
+      });
+
+      setQuiz(parseQuizContent(response.content));
+    } catch (error) {
+      setRequestError(error.message || "Unable to generate quiz");
+    } finally {
+      setIsGenerating(false);
+      setGenerationSessionId(null);
+    }
   };
 
   const handleFile = (file) => {
     if (!file) return;
     if (file.type === "application/pdf" || file.type.startsWith("text/")) {
+      setSelectedFile(file);
       setFileName(file.name);
       setInputMode("file");
+      setRequestError("");
     }
   };
 
@@ -220,10 +295,23 @@ export default function Dashboard() {
 
   const reset = () => {
     setQuiz(null); setCurrent(0); setScore(0); setAnswers([]);
-    setNotes(""); setFileName(null); setInputMode("text"); setTimerSeconds(null);
+    setNotes(""); setSelectedFile(null); setFileName(null); setInputMode("text"); setTimerSeconds(null); setRequestError("");
   };
 
-  if (isGenerating) return <><Navbar /><QuizSkeleton /></>;
+  if (isGenerating) {
+    return (
+      <>
+        <Navbar />
+        <div className={`min-h-screen px-6 pt-16 ${dark ? "bg-gray-950" : "bg-white"}`}>
+          <div className="mx-auto max-w-2xl space-y-6">
+            <GenerationProgress sessionId={generationSessionId} />
+            <QuizSkeleton />
+          </div>
+        </div>
+        <DarkModeToggle />
+      </>
+    );
+  }
 
   if (quiz && current < quiz.length) {
     return (
@@ -372,7 +460,7 @@ export default function Dashboard() {
                       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
                     </svg>
                     <span className="flex-1 truncate">{fileName}</span>
-                    <button className={`transition-colors ${dark ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-600"}`} onClick={() => setFileName(null)}>
+                    <button className={`transition-colors ${dark ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-600"}`} onClick={() => { setFileName(null); setSelectedFile(null); }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                       </svg>
@@ -396,6 +484,12 @@ export default function Dashboard() {
               </>
             )}
           </div>
+
+          {requestError && (
+            <p className={`mt-4 rounded-2xl px-4 py-3 text-sm ${dark ? "bg-red-950/50 text-red-300" : "bg-red-50 text-red-600"}`}>
+              {requestError}
+            </p>
+          )}
 
           {/* Recent uploads */}
           {history.length > 0 && (

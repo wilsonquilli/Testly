@@ -51,7 +51,7 @@ export default function Results({ score, total, answers, quiz, onReset }) {
 
           <button
             onClick={onReset}
-            className="px-8 py-3 rounded-full text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="px-8 py-3 rounded-full text-white font-semibold text-sm hover:opacity-90 transition-opacity cursor-pointer"
             style={{ background: accent }}
           >
             Take another quiz

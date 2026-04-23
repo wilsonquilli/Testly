@@ -7,15 +7,16 @@ from ..db import get_db
 from ..auth import get_current_user
 from .. import models
 from ..realtime import broadcast_dashboard_snapshot, broadcast_generation_progress
-from ..services.ai_service import generate_quiz
-from ..services.parser import extract_text_from_pdf
+from ..services.ai_service import AIServiceError, AIServiceUnavailableError, generate_quiz
+from ..services.parser import extract_text_from_file
 from ..services.usage_limiter import get_or_create_usage, check_limit
 from ..schemas import QuizOut
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
 @router.post("/generate", response_model=QuizOut)
 async def generate_quiz_endpoint(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    text: Optional[str] = Form(None),
     session_id: Optional[str] = Form(None),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -28,37 +29,60 @@ async def generate_quiz_endpoint(
             detail=f"Monthly quiz limit reached (10 quizzes). Upgrade to premium for unlimited access.",
         )
 
-    suffix = ".pdf" if file.content_type == "application/pdf" else ""
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
+    if file:
+        original_name = file.filename or "upload"
+        _, extension = os.path.splitext(original_name)
+        suffix = extension.lower()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
 
-    if session_id:
-        await broadcast_generation_progress(session_id, "reading", "Reading your document...", 15)
+        if session_id:
+            await broadcast_generation_progress(session_id, "reading", "Reading your document...", 15)
 
-    text = extract_text_from_pdf(tmp_path)
-    os.unlink(tmp_path)
+        try:
+            source_text = extract_text_from_file(tmp_path, filename=original_name, content_type=file.content_type)
+        except ValueError as exc:
+            os.unlink(tmp_path)
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        os.unlink(tmp_path)
+    elif text:
+        if session_id:
+            await broadcast_generation_progress(session_id, "reading", "Reading your notes...", 15)
+        source_text = text
+    else:
+        raise HTTPException(status_code=422, detail="Provide either a PDF/DOCX file or raw text.")
 
-    if not text:
-        raise HTTPException(status_code=422, detail="Could not extract text from the uploaded file.")
+    if not source_text:
+        raise HTTPException(status_code=422, detail="Could not extract text from the provided source.")
 
     if session_id:
         await broadcast_generation_progress(session_id, "analyzing", "Analyzing key concepts...", 45)
 
-    quiz_content = generate_quiz(text, is_premium=current_user.is_premium)
+    try:
+        quiz_content = generate_quiz(source_text, is_premium=current_user.is_premium)
+    except AIServiceUnavailableError as exc:
+        if session_id:
+            await broadcast_generation_progress(session_id, "error", str(exc), 100)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except AIServiceError as exc:
+        if session_id:
+            await broadcast_generation_progress(session_id, "error", str(exc), 100)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     if session_id:
         await broadcast_generation_progress(session_id, "generating", "Saving your quiz...", 80)
 
     quiz = models.Quiz(
         user_id=current_user.id,
-        title=file.filename,
+        title=file.filename if file else "Pasted Notes",
         content=quiz_content,
     )
     db.add(quiz)
 
     usage.quizzes_generated += 1
-    usage.files_uploaded += 1
+    if file:
+        usage.files_uploaded += 1
     db.commit()
     db.refresh(quiz)
 

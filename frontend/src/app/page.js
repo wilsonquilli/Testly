@@ -44,7 +44,7 @@ function FAQItem({ q, a }) {
       <button
         className={`w-full flex items-center justify-between px-6 py-5 text-left font-patua text-lg transition-colors ${
           dark ? "text-gray-100 hover:bg-gray-800" : "text-gray-900 hover:bg-gray-50"
-        }`}
+        } cursor-pointer`}
         onClick={() => setOpen(!open)}
       >
         <span>{q}</span>
@@ -122,14 +122,14 @@ export default function Home() {
           <button onClick={() => setOpen(true)}
             className={`font-patua px-8 py-4 rounded-full text-lg font-semibold shadow-lg hover:shadow-xl transition-colors ${
               dark ? "bg-gray-100 text-gray-900 hover:bg-white" : "bg-gray-950 text-white hover:bg-gray-800"
-            }`}>
+            } cursor-pointer`}>
             {t.uploadBtn}
           </button>
           <button onClick={() => setOpen(true)}
             className={`font-patua border-2 px-8 py-4 rounded-full text-lg font-semibold transition-colors ${
               dark ? "border-gray-700 text-gray-200 hover:border-red-500 hover:text-red-400"
                    : "border-gray-200 text-gray-900 hover:border-emerald-400 hover:text-emerald-600"
-            }`}>
+            } cursor-pointer`}>
             {t.createQuizBtn}
           </button>
         </div>
@@ -230,7 +230,7 @@ export default function Home() {
               <button onClick={() => setOpen(true)}
                 className={`font-patua w-full border-2 py-3 rounded-full font-semibold transition-colors ${
                   dark ? "border-gray-600 text-gray-200 hover:border-gray-400" : "border-gray-200 text-gray-800 hover:border-gray-400"
-                }`}>
+                } cursor-pointer`}>
                 {t.freeBtn}
               </button>
             </div>
@@ -258,7 +258,7 @@ export default function Home() {
                 ))}
               </ul>
               <button onClick={() => setOpen(true)}
-                className="font-patua w-full py-3 rounded-full font-semibold text-white shadow-md hover:opacity-90 transition-opacity"
+                className="font-patua w-full py-3 rounded-full font-semibold text-white shadow-md hover:opacity-90 transition-opacity cursor-pointer"
                 style={{ background: accent }}>
                 {t.jerryBtn}
               </button>
@@ -268,7 +268,7 @@ export default function Home() {
 
         <p className={`font-patua text-center mt-8 text-sm ${dark ? "text-gray-500" : "text-gray-400"}`}>
           {t.pricingQuestion}{" "}
-          <button className="underline hover:opacity-80 transition-opacity" style={{ color: accent }}>{t.contactUs}</button>
+          <button className="underline hover:opacity-80 transition-opacity cursor-pointer" style={{ color: accent }}>{t.contactUs}</button>
         </p>
       </section>
 
@@ -279,7 +279,7 @@ export default function Home() {
               <Image src={Jerry_Study} alt="Still have questions?" width={120} height={120} className="mb-5 object-contain" />
               <h3 className={`font-patua text-2xl font-bold mb-2 ${dark ? "text-gray-100" : "text-gray-900"}`}>{t.faqSideTitle}</h3>
               <p className={`font-patua text-sm leading-relaxed mb-5 ${dark ? "text-gray-400" : "text-gray-500"}`}>{t.faqSideDesc}</p>
-              <button className={`font-patua inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-colors w-fit ${
+              <button className={`font-patua inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-colors w-fit cursor-pointer ${
                 dark ? "bg-gray-100 text-gray-900 hover:bg-white" : "bg-gray-950 text-white hover:bg-gray-800"
               }`}>{t.contactSupport}</button>
             </div>

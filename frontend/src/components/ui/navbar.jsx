@@ -65,17 +65,22 @@ const Navbar = () => {
     setCurrentUser(user);
   };
 
-  const handleAuthButton = () => {
-    if (currentUser) {
-      clearAuthSession();
-      setCurrentUser(null);
-      return;
-    }
+  const getUserLabel = () => {
+    if (!currentUser) return "";
+    return currentUser.name?.trim() || currentUser.email?.split("@")[0] || currentUser.email || "";
+  };
 
+  const handleLogin = () => {
     setOpen(true);
   };
 
-  const authLabel = currentUser ? currentUser.email : t.logIn;
+  const handleLogout = () => {
+    clearAuthSession();
+    setCurrentUser(null);
+    setMenuOpen(false);
+  };
+
+  const authLabel = currentUser ? getUserLabel() : t.logIn;
 
   return (
     <>
@@ -104,17 +109,38 @@ const Navbar = () => {
           </ul>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleAuthButton}
-              className={`hidden md:block font-patua text-sm px-4 py-2 rounded-full transition-colors ${
-                dark ? "text-gray-400 hover:bg-gray-800" : "text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {authLabel}
-            </button>
+            {currentUser ? (
+              <div className="hidden md:flex items-center gap-2">
+                <span
+                  className={`font-patua text-sm px-4 py-2 rounded-full border ${
+                    dark ? "border-gray-700 bg-gray-800 text-gray-200" : "border-gray-200 bg-gray-50 text-gray-700"
+                  }`}
+                  title={currentUser.email}
+                >
+                  {authLabel}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className={`hidden md:block font-patua text-sm px-4 py-2 rounded-full cursor-pointer transition-colors ${
+                    dark ? "text-gray-300 hover:bg-gray-800 hover:text-red-400" : "text-gray-700 hover:bg-gray-50 hover:text-emerald-600"
+                  }`}
+                >
+                  {t.logOut}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleLogin}
+                className={`hidden md:block font-patua text-sm px-4 py-2 rounded-full cursor-pointer transition-colors ${
+                  dark ? "text-gray-300 hover:bg-gray-800 hover:text-red-400" : "text-gray-700 hover:bg-gray-50 hover:text-emerald-600"
+                }`}
+              >
+                {authLabel}
+              </button>
+            )}
 
             <button
-              className={`md:hidden p-2 rounded-full transition-colors ${dark ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
+              className={`md:hidden p-2 rounded-full cursor-pointer transition-colors ${dark ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >
@@ -137,7 +163,7 @@ const Navbar = () => {
               <Link
                 key={label}
                 href={navHrefs[i]}
-                className={`font-patua text-sm px-4 py-2.5 rounded-xl transition-colors ${
+                className={`font-patua text-sm px-4 py-2.5 rounded-xl cursor-pointer transition-colors ${
                   dark ? "text-gray-300 hover:text-red-400" : "text-gray-700 hover:text-emerald-500"
                 }`}
                 onClick={() => setMenuOpen(false)}
@@ -146,14 +172,34 @@ const Navbar = () => {
               </Link>
             ))}
             <div className={`border-t mt-1 pt-2 ${dark ? "border-gray-700" : "border-gray-100"}`}>
-              <button
-                onClick={() => { handleAuthButton(); setMenuOpen(false); }}
-                className={`font-patua w-full text-sm px-4 py-2.5 rounded-xl transition-colors text-left ${
-                  dark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {authLabel}
-              </button>
+              {currentUser ? (
+                <div className="space-y-1">
+                  <div
+                    className={`font-patua w-full text-sm px-4 py-2.5 rounded-xl ${
+                      dark ? "bg-gray-800 text-gray-200" : "bg-gray-50 text-gray-700"
+                    }`}
+                  >
+                    {authLabel}
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className={`font-patua w-full text-sm px-4 py-2.5 rounded-xl cursor-pointer transition-colors text-left ${
+                      dark ? "text-gray-300 hover:bg-gray-800 hover:text-red-400" : "text-gray-700 hover:bg-gray-50 hover:text-emerald-600"
+                    }`}
+                  >
+                    {t.logOut}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { handleLogin(); setMenuOpen(false); }}
+                  className={`font-patua w-full text-sm px-4 py-2.5 rounded-xl cursor-pointer transition-colors text-left ${
+                    dark ? "text-gray-300 hover:bg-gray-800 hover:text-red-400" : "text-gray-700 hover:bg-gray-50 hover:text-emerald-600"
+                  }`}
+                >
+                  {authLabel}
+                </button>
+              )}
             </div>
           </div>
         )}
